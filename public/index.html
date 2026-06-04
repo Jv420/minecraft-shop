@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DynathiSMP Store</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="hero">
+    <nav class="nav">
+      <div class="brand"><span class="cube">◆</span> DynathiSMP Store</div>
+      <div class="nav-links"><a href="#shop">Shop</a><a href="/success.html">Status</a></div>
+    </nav>
+    <section class="hero-content">
+      <p class="eyebrow">Premium Minecraft SMP Webshop</p>
+      <h1>Ranks, Coins, Shards, Crate Keys & Bundels</h1>
+      <p>Betaal veilig via Stripe. Na succesvolle betaling wordt je aankoop automatisch geleverd op DynathiSMP.</p>
+      <a class="hero-btn" href="#shop">Bekijk producten</a>
+    </section>
+  </header>
+
+  <main id="shop" class="container">
+    <section class="player-card">
+      <div>
+        <h2>Vul je Minecraft naam in</h2>
+        <p>Let op: je aankoop wordt automatisch aan deze speler gegeven.</p>
+      </div>
+      <input id="playerName" placeholder="Bijvoorbeeld: Jochem123" autocomplete="off" />
+    </section>
+
+    <section class="filters" id="filters"></section>
+    <section class="grid" id="products"></section>
+  </main>
+
+  <section class="trust container">
+    <div><strong>⚡ Automatische levering</strong><span>Via RCON naar LuckPerms, Cuy/DonutCore en DonutCrates.</span></div>
+    <div><strong>🔒 Veilig betalen</strong><span>Stripe Checkout met iDEAL, kaart en Bancontact.</span></div>
+    <div><strong>📢 Discord tracking</strong><span>Elke status wordt gelogd in je community/server staff kanaal.</span></div>
+  </section>
+
+  <footer>© DynathiSMP Store — Powered by Stripe, Vercel & Minecraft RCON</footer>
+
+  <script>
+    let allProducts = [];
+    let activeCategory = 'Alles';
+
+    const icons = { Ranks: '⭐', Coins: '💰', Shards: '💎', 'Crate Keys': '📦', Bundels: '🔥' };
+
+    function euro(cents) { return '€' + (cents / 100).toFixed(2); }
+
+    async function loadProducts() {
+      const res = await fetch('/api/products');
+      allProducts = await res.json();
+      renderFilters();
+      renderProducts();
+    }
+
+    function renderFilters() {
+      const categories = ['Alles', ...new Set(allProducts.map(p => p.category))];
+      document.getElementById('filters').innerHTML = categories.map(cat => `<button class="filter ${cat === activeCategory ? 'active' : ''}" onclick="setCategory('${cat}')">${cat === 'Alles' ? '🛒' : icons[cat] || '•'} ${cat}</button>`).join('');
+    }
+
+    function setCategory(cat) {
+      activeCategory = cat;
+      renderFilters();
+      renderProducts();
+    }
+
+    function renderProducts() {
+      const products = activeCategory === 'Alles' ? allProducts : allProducts.filter(p => p.category === activeCategory);
+      document.getElementById('products').innerHTML = products.map(p => `
+        <article class="card">
+          <div class="card-top"><span class="badge">${icons[p.category] || '🎮'} ${p.category}</span><span class="price">${euro(p.price)}</span></div>
+          <h3>${p.name}</h3>
+          <p>${p.description}</p>
+          <button onclick="buy('${p.id}')">Koop nu</button>
+        </article>
+      `).join('');
+    }
+
+    async function buy(productId) {
+      const player = document.getElementById('playerName').value.trim();
+      if (!/^[a-zA-Z0-9_\.]{3,16}$/.test(player)) {
+        alert('Vul een geldige Minecraft naam in. Gebruik 3-16 tekens: letters, cijfers, _ of punt.');
+        return;
+      }
+
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ productId, player })
+      });
+      const data = await res.json();
+      if (!res.ok) return alert(data.error || 'Checkout starten is mislukt.');
+      window.location.href = data.url;
+    }
+
+    loadProducts().catch(() => {
+      document.getElementById('products').innerHTML = '<p>Producten konden niet geladen worden.</p>';
+    });
+  </script>
+</body>
+</html>
