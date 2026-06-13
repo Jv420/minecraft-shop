@@ -38,7 +38,7 @@ public final class DynathiStoreBridge extends JavaPlugin {
         getServer().getPluginManager().registerEvents(guiManager, this);
         getServer().getPluginManager().registerEvents(playerShopGui, this);
         startPolling();
-        getLogger().info("DynathiStoreBridge 1.2.0 is ingeschakeld.");
+        getLogger().info("DynathiStoreBridge 1.3.0 is ingeschakeld.");
     }
 
     @Override
@@ -186,7 +186,7 @@ public final class DynathiStoreBridge extends JavaPlugin {
             return true;
         }
 
-        if (command.getName().equalsIgnoreCase("shop") || command.getName().equalsIgnoreCase("webshop")) {
+        if (command.getName().equalsIgnoreCase("buy") || command.getName().equalsIgnoreCase("webshop")) {
             if (!(sender instanceof Player player)) {
                 sender.sendMessage("Dit commando kan alleen in-game gebruikt worden.");
                 return true;
