@@ -1,5 +1,5 @@
 name: DynathiStoreBridge
-version: 1.3.0
+version: 1.4.0
 main: nl.dynathi.store.DynathiStoreBridge
 api-version: '1.21'
 author: Jv420
@@ -7,7 +7,7 @@ description: Pull-based delivery bridge between the DynathiSMP Vercel store and 
 commands:
   storebridge:
     description: Beheer DynathiStoreBridge
-    usage: /storebridge <status|reload|check>
+    usage: /storebridge <status|reload|check|license>
     permission: dynathistore.admin
   storegui:
     description: Open de DynathiSMP store beheer-GUI
