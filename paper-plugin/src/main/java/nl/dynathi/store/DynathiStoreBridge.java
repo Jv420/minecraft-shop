@@ -7,6 +7,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -25,13 +26,16 @@ public final class DynathiStoreBridge extends JavaPlugin {
     private final AtomicBoolean checking = new AtomicBoolean(false);
     private HttpClient httpClient;
     private BukkitTask pollingTask;
+    private StoreGuiManager guiManager;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         this.httpClient = buildHttpClient();
+        this.guiManager = new StoreGuiManager(this);
+        getServer().getPluginManager().registerEvents(guiManager, this);
         startPolling();
-        getLogger().info("DynathiStoreBridge is ingeschakeld.");
+        getLogger().info("DynathiStoreBridge 1.1.0 is ingeschakeld.");
     }
 
     @Override
@@ -56,6 +60,10 @@ public final class DynathiStoreBridge extends JavaPlugin {
                 20L,
                 seconds * 20L
         );
+    }
+
+    public void manualPoll() {
+        CompletableFuture.runAsync(this::pollOrders);
     }
 
     private void pollOrders() {
@@ -162,6 +170,19 @@ public final class DynathiStoreBridge extends JavaPlugin {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (command.getName().equalsIgnoreCase("storegui")) {
+            if (!(sender instanceof Player player)) {
+                sender.sendMessage("Dit commando kan alleen in-game gebruikt worden.");
+                return true;
+            }
+            if (!sender.hasPermission("dynathistore.gui")) {
+                sender.sendMessage(ChatColor.RED + "Geen toestemming.");
+                return true;
+            }
+            guiManager.openMain(player);
+            return true;
+        }
+
         if (!sender.hasPermission("dynathistore.admin")) {
             sender.sendMessage(ChatColor.RED + "Geen toestemming.");
             return true;
@@ -183,7 +204,7 @@ public final class DynathiStoreBridge extends JavaPlugin {
         }
 
         if (args[0].equalsIgnoreCase("check")) {
-            CompletableFuture.runAsync(this::pollOrders);
+            manualPoll();
             sender.sendMessage(ChatColor.YELLOW + "Handmatige ordercheck gestart.");
             return true;
         }
