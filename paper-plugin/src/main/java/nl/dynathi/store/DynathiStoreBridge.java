@@ -10,7 +10,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -79,7 +78,9 @@ public final class DynathiStoreBridge extends JavaPlugin {
         httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenAccept(response -> {
                     if (response.statusCode() != 200) {
-                        getLogger().warning("Orders ophalen mislukt. HTTP " + response.statusCode());
+                        String body = response.body() == null ? "" : response.body();
+                        if (body.length() > 600) body = body.substring(0, 600);
+                        getLogger().warning("Orders ophalen mislukt. HTTP " + response.statusCode() + " | " + body);
                         return;
                     }
                     try {
@@ -148,7 +149,9 @@ public final class DynathiStoreBridge extends JavaPlugin {
         httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenAccept(response -> {
                     if (getConfig().getBoolean("logging.responses", true)) {
-                        getLogger().info("Order " + orderId + " status gemeld. HTTP " + response.statusCode());
+                        String bodyText = response.body() == null ? "" : response.body();
+                        if (bodyText.length() > 600) bodyText = bodyText.substring(0, 600);
+                        getLogger().info("Order " + orderId + " status gemeld. HTTP " + response.statusCode() + " | " + bodyText);
                     }
                 })
                 .exceptionally(ex -> {
