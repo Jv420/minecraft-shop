@@ -24,6 +24,7 @@
     const message = document.getElementById('message');
     const details = document.getElementById('details');
     const help = document.getElementById('help');
+    let syncAttempted = false;
 
     function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>'"]/g, char => ({
@@ -51,8 +52,8 @@
       }
 
       if (!orderStatus) {
-        title.textContent = '✅ Betaling ontvangen';
-        message.textContent = 'De betaling is gelukt. De order wordt nu klaargezet voor levering.';
+        title.textContent = '🛠️ Betaalde order wordt hersteld';
+        message.textContent = 'De betaling is gelukt, maar de order ontbreekt nog in MySQL. We proberen dit automatisch te herstellen.';
         help.textContent = 'Deze pagina vernieuwt automatisch.';
         return false;
       }
@@ -81,6 +82,19 @@
       return false;
     }
 
+    async function syncPaidOrder() {
+      const response = await fetch('/api/sync-paid-order', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.details || data.error || 'Betaalde order kon niet worden hersteld');
+      }
+      return data;
+    }
+
     async function checkStatus() {
       if (!sessionId) {
         title.textContent = '❌ Geen sessie gevonden';
@@ -99,7 +113,16 @@
           throw new Error(data.details || data.error || 'Status kon niet worden opgehaald');
         }
 
-        const finished = render(data);
+        render(data);
+
+        if (data.paymentStatus === 'paid' && !data.orderStatus && !syncAttempted) {
+          syncAttempted = true;
+          await syncPaidOrder();
+          setTimeout(checkStatus, 1500);
+          return;
+        }
+
+        const finished = data.orderStatus === 'delivered' || data.orderStatus === 'failed';
         if (!finished) setTimeout(checkStatus, 3000);
       } catch (error) {
         title.textContent = '⚠️ Status tijdelijk niet beschikbaar';
