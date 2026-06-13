@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>nl.dynathi</groupId>
   <artifactId>dynathi-store-bridge</artifactId>
-  <version>1.0.0</version>
+  <version>1.4.0</version>
   <properties>
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
@@ -28,6 +28,7 @@
     </dependency>
   </dependencies>
   <build>
+    <finalName>dynathi-store-bridge-${project.version}</finalName>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
