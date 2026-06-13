@@ -28,17 +28,26 @@ public final class DynathiStoreBridge extends JavaPlugin {
     private BukkitTask pollingTask;
     private StoreGuiManager guiManager;
     private PlayerShopGui playerShopGui;
+    private LicenseManager licenseManager;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         this.httpClient = buildHttpClient();
+        this.licenseManager = new LicenseManager(this);
         this.guiManager = new StoreGuiManager(this);
         this.playerShopGui = new PlayerShopGui(this);
         getServer().getPluginManager().registerEvents(guiManager, this);
         getServer().getPluginManager().registerEvents(playerShopGui, this);
+
+        licenseManager.verify(true).thenAccept(result -> {
+            if (!result) {
+                getLogger().warning("DynathiStoreBridge licentie ongeldig: " + licenseManager.getMessage());
+            }
+        });
+        licenseManager.scheduleChecks();
         startPolling();
-        getLogger().info("DynathiStoreBridge 1.3.0 is ingeschakeld.");
+        getLogger().info("DynathiStoreBridge 1.4.0 is ingeschakeld.");
     }
 
     @Override
@@ -69,7 +78,12 @@ public final class DynathiStoreBridge extends JavaPlugin {
         CompletableFuture.runAsync(this::pollOrders);
     }
 
+    public boolean isLicensed() {
+        return licenseManager == null || licenseManager.isValid();
+    }
+
     private void pollOrders() {
+        if (!isLicensed()) return;
         if (!checking.compareAndSet(false, true)) return;
 
         String apiUrl = trimSlash(getConfig().getString("api-url", ""));
@@ -112,6 +126,7 @@ public final class DynathiStoreBridge extends JavaPlugin {
     }
 
     private void processOrder(JsonObject order) {
+        if (!isLicensed()) return;
         String orderId = order.get("id").getAsString();
         String player = order.get("player").getAsString();
         String productName = order.get("productName").getAsString();
@@ -120,6 +135,7 @@ public final class DynathiStoreBridge extends JavaPlugin {
         commandArray.forEach(element -> commands.add(element.getAsString()));
 
         Bukkit.getScheduler().runTask(this, () -> {
+            if (!isLicensed()) return;
             List<String> failures = new ArrayList<>();
             for (String command : commands) {
                 if (getConfig().getBoolean("logging.commands", true)) {
@@ -182,6 +198,10 @@ public final class DynathiStoreBridge extends JavaPlugin {
                 sender.sendMessage(ChatColor.RED + "Geen toestemming.");
                 return true;
             }
+            if (!isLicensed()) {
+                sender.sendMessage(ChatColor.RED + "De DynathiStore-licentie is ongeldig.");
+                return true;
+            }
             guiManager.openMain(player);
             return true;
         }
@@ -193,6 +213,10 @@ public final class DynathiStoreBridge extends JavaPlugin {
             }
             if (!sender.hasPermission("dynathistore.shop")) {
                 sender.sendMessage(ChatColor.RED + "Geen toestemming.");
+                return true;
+            }
+            if (!isLicensed()) {
+                sender.sendMessage(ChatColor.RED + "De webshop is tijdelijk niet beschikbaar: ongeldige licentie.");
                 return true;
             }
             playerShopGui.open(player);
@@ -208,24 +232,39 @@ public final class DynathiStoreBridge extends JavaPlugin {
             sender.sendMessage(ChatColor.GREEN + "DynathiStoreBridge actief.");
             sender.sendMessage(ChatColor.GRAY + "API: " + getConfig().getString("api-url"));
             sender.sendMessage(ChatColor.GRAY + "Interval: " + getConfig().getLong("check-interval-seconds", 10) + " seconden");
+            if (licenseManager != null) licenseManager.sendStatus(sender);
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("license")) {
+            sender.sendMessage(ChatColor.YELLOW + "Licentie wordt opnieuw gecontroleerd...");
+            licenseManager.verify(true).thenAccept(result -> Bukkit.getScheduler().runTask(this, () ->
+                    licenseManager.sendStatus(sender)));
             return true;
         }
 
         if (args[0].equalsIgnoreCase("reload")) {
             reloadConfig();
             this.httpClient = buildHttpClient();
+            this.licenseManager = new LicenseManager(this);
+            licenseManager.verify(true);
+            licenseManager.scheduleChecks();
             startPolling();
             sender.sendMessage(ChatColor.GREEN + "Configuratie herladen.");
             return true;
         }
 
         if (args[0].equalsIgnoreCase("check")) {
+            if (!isLicensed()) {
+                sender.sendMessage(ChatColor.RED + "Ordercheck geblokkeerd: ongeldige licentie.");
+                return true;
+            }
             manualPoll();
             sender.sendMessage(ChatColor.YELLOW + "Handmatige ordercheck gestart.");
             return true;
         }
 
-        sender.sendMessage(ChatColor.YELLOW + "/storebridge <status|reload|check>");
+        sender.sendMessage(ChatColor.YELLOW + "/storebridge <status|reload|check|license>");
         return true;
     }
 
