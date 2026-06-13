@@ -69,21 +69,14 @@
 
     function renderProducts() {
       const products = activeCategory === 'Alles' ? allProducts : allProducts.filter(p => p.category === activeCategory);
-      document.getElementById('products').innerHTML = products.map(p => {
-        const isTestBundle = p.id === 'live_test_bundle';
-        const priceHtml = isTestBundle
-          ? `<span class="price"><small style="display:block;text-decoration:line-through;color:#9ca3af;font-size:13px">€29.99</small>${euro(p.price)}</span>`
-          : `<span class="price">${euro(p.price)}</span>`;
-        const badgeText = isTestBundle ? '🧪 TIJDELIJKE TEST' : `${icons[p.category] || '🎮'} ${p.category}`;
-        return `
-          <article class="card">
-            <div class="card-top"><span class="badge">${badgeText}</span>${priceHtml}</div>
-            <h3>${p.name}</h3>
-            <p>${p.description}</p>
-            <button onclick="buy('${p.id}')">${isTestBundle ? 'Test voor €0,50' : 'Koop nu'}</button>
-          </article>
-        `;
-      }).join('');
+      document.getElementById('products').innerHTML = products.map(p => `
+        <article class="card">
+          <div class="card-top"><span class="badge">${icons[p.category] || '🎮'} ${p.category}</span><span class="price">${euro(p.price)}</span></div>
+          <h3>${p.name}</h3>
+          <p>${p.description}</p>
+          <button onclick="buy('${p.id}')">Koop nu</button>
+        </article>
+      `).join('');
     }
 
     async function buy(productId) {
