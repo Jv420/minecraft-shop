@@ -34,12 +34,12 @@
   </main>
 
   <section class="trust container">
-    <div><strong>⚡ Automatische levering</strong><span>Via RCON naar LuckPerms, Cuy/DonutCore en DonutCrates.</span></div>
+    <div><strong>⚡ Automatische levering</strong><span>Via de DynathiStoreBridge Paper-plugin naar LuckPerms, MoneyManager, ShardManager en KeyManager.</span></div>
     <div><strong>🔒 Veilig betalen</strong><span>Stripe Checkout met iDEAL, kaart en Bancontact.</span></div>
-    <div><strong>📢 Discord tracking</strong><span>Elke status wordt gelogd in je community/server staff kanaal.</span></div>
+    <div><strong>📢 Discord tracking</strong><span>Elke betaal- en leverstatus wordt gelogd in je Discord-kanaal.</span></div>
   </section>
 
-  <footer>© DynathiSMP Store — Powered by Stripe, Vercel & Minecraft RCON</footer>
+  <footer>© DynathiSMP Store — Powered by Stripe, Vercel, MySQL & Paper</footer>
 
   <script>
     let allProducts = [];
@@ -69,14 +69,21 @@
 
     function renderProducts() {
       const products = activeCategory === 'Alles' ? allProducts : allProducts.filter(p => p.category === activeCategory);
-      document.getElementById('products').innerHTML = products.map(p => `
-        <article class="card">
-          <div class="card-top"><span class="badge">${icons[p.category] || '🎮'} ${p.category}</span><span class="price">${euro(p.price)}</span></div>
-          <h3>${p.name}</h3>
-          <p>${p.description}</p>
-          <button onclick="buy('${p.id}')">Koop nu</button>
-        </article>
-      `).join('');
+      document.getElementById('products').innerHTML = products.map(p => {
+        const isTestBundle = p.id === 'live_test_bundle';
+        const priceHtml = isTestBundle
+          ? `<span class="price"><small style="display:block;text-decoration:line-through;color:#9ca3af;font-size:13px">€29.99</small>${euro(p.price)}</span>`
+          : `<span class="price">${euro(p.price)}</span>`;
+        const badgeText = isTestBundle ? '🧪 TIJDELIJKE TEST' : `${icons[p.category] || '🎮'} ${p.category}`;
+        return `
+          <article class="card">
+            <div class="card-top"><span class="badge">${badgeText}</span>${priceHtml}</div>
+            <h3>${p.name}</h3>
+            <p>${p.description}</p>
+            <button onclick="buy('${p.id}')">${isTestBundle ? 'Test voor €0,50' : 'Koop nu'}</button>
+          </article>
+        `;
+      }).join('');
     }
 
     async function buy(productId) {
