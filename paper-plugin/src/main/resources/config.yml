@@ -1,0 +1,8 @@
+api-url: "https://jouw-vercel-project.vercel.app"
+api-secret: "vervang-dit-met-dezelfde-lange-secret-als-in-vercel"
+check-interval-seconds: 10
+request-timeout-seconds: 15
+
+logging:
+  commands: true
+  responses: true
