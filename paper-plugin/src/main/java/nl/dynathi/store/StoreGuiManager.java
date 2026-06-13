@@ -6,7 +6,6 @@ import com.google.gson.JsonObject;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -51,8 +50,8 @@ public final class StoreGuiManager implements Listener {
         Inventory inventory = Bukkit.createInventory(null, 27, MAIN_TITLE);
         inventory.setItem(11, item(Material.CHEST, ChatColor.GREEN + "Bestellingen bekijken",
                 ChatColor.GRAY + "Bekijk recente orders en retry mislukte orders."));
-        inventory.setItem(15, item(Material.GIFT_WRAPPER, ChatColor.LIGHT_PURPLE + "Cadeau geven",
-                ChatColor.GRAY + "Geef coins, shards, keys, bundels of ranks cadeau."));
+        inventory.setItem(15, item(Material.BUNDLE, ChatColor.LIGHT_PURPLE + "Cadeau geven",
+                ChatColor.GRAY + "Geef coins, shards, bundels of ranks cadeau."));
         inventory.setItem(22, item(Material.REDSTONE_TORCH, ChatColor.YELLOW + "Orders nu controleren",
                 ChatColor.GRAY + "Start direct een handmatige ordercheck."));
         player.openInventory(inventory);
@@ -155,16 +154,12 @@ public final class StoreGuiManager implements Listener {
         addGift(inventory, slots, 11, Material.EMERALD_BLOCK, "coins_50k", "50.000 Coins");
         addGift(inventory, slots, 13, Material.AMETHYST_SHARD, "shards_500", "500 Shards");
         addGift(inventory, slots, 14, Material.AMETHYST_BLOCK, "shards_1500", "1.500 Shards");
-        addGift(inventory, slots, 19, Material.TRIPWIRE_HOOK, "common_keys_3", "3 Common Keys");
-        addGift(inventory, slots, 20, Material.GOLD_INGOT, "gold_keys_3", "3 Gold Keys");
-        addGift(inventory, slots, 21, Material.REDSTONE, "crimson_keys_3", "3 Crimson Keys");
-        addGift(inventory, slots, 22, Material.AMETHYST_CLUSTER, "amethyst_keys_3", "3 Amethyst Keys");
-        addGift(inventory, slots, 23, Material.NETHER_STAR, "prime_keys_3", "3 Prime Keys");
         addGift(inventory, slots, 28, Material.IRON_CHESTPLATE, "vip", "VIP Rank");
         addGift(inventory, slots, 29, Material.DIAMOND_CHESTPLATE, "elite", "Elite Rank");
         addGift(inventory, slots, 30, Material.NETHERITE_CHESTPLATE, "legend", "Legend Rank");
         addGift(inventory, slots, 32, Material.CHEST, "starter_bundle", "Starter Bundle");
         addGift(inventory, slots, 33, Material.ENDER_CHEST, "mega_bundle", "Mega Bundle");
+        addGift(inventory, slots, 34, Material.BUNDLE, "live_test_bundle", "Ultimate Bundle");
 
         inventory.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Terug naar spelers"));
         giftProductSlots.put(player.getUniqueId(), slots);
