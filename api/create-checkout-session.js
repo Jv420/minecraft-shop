@@ -2,8 +2,9 @@ const Stripe = require('stripe');
 const products = require('../lib/products');
 const { cleanPlayer } = require('../lib/delivery');
 const { sendDiscordEmbed, money } = require('../lib/discord');
+const { requireLicense } = require('../lib/license');
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
@@ -48,4 +49,6 @@ module.exports = async function handler(req, res) {
     console.error(error);
     return res.status(500).json({ error: error.message || 'Checkout kon niet worden gestart' });
   }
-};
+}
+
+module.exports = requireLicense(handler);
