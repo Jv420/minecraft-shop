@@ -3,17 +3,113 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Betaling gelukt - DynathiSMP</title>
+  <title>Betalingstatus - DynathiSMP</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <main class="status-wrap">
     <section class="status-card">
-      <h1>✅ Betaling gelukt</h1>
-      <p>Je betaling is succesvol ontvangen. Je aankoop wordt automatisch geleverd op DynathiSMP.</p>
-      <p>Komt je aankoop niet binnen? Maak dan een ticket op Discord en stuur je Stripe sessie ID mee.</p>
+      <h1 id="title">⏳ Betaling controleren...</h1>
+      <p id="message">We controleren je Stripe-betaling en Minecraft-levering.</p>
+      <div id="details" style="margin:20px 0;text-align:left"></div>
+      <p id="help">Sluit deze pagina nog niet zolang de levering wordt gecontroleerd.</p>
       <a href="/">Terug naar de shop</a>
     </section>
   </main>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id');
+    const title = document.getElementById('title');
+    const message = document.getElementById('message');
+    const details = document.getElementById('details');
+    const help = document.getElementById('help');
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>'"]/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      })[char]);
+    }
+
+    function render(data) {
+      const paymentPaid = data.paymentStatus === 'paid';
+      const orderStatus = data.orderStatus;
+
+      details.innerHTML = `
+        <p><strong>Speler:</strong> ${escapeHtml(data.player || 'Onbekend')}</p>
+        <p><strong>Betaling:</strong> ${escapeHtml(data.paymentStatus || 'Onbekend')}</p>
+        <p><strong>Levering:</strong> ${escapeHtml(orderStatus || 'Nog niet verwerkt')}</p>
+        <p><strong>Sessie:</strong> <code>${escapeHtml(data.sessionId || sessionId)}</code></p>
+        ${data.orderMessage ? `<p><strong>Details:</strong> ${escapeHtml(data.orderMessage)}</p>` : ''}
+      `;
+
+      if (!paymentPaid) {
+        title.textContent = '⚠️ Betaling nog niet bevestigd';
+        message.textContent = 'Stripe heeft de betaling nog niet als betaald gemarkeerd.';
+        help.textContent = 'Wacht enkele seconden of controleer je betaalmethode.';
+        return false;
+      }
+
+      if (!orderStatus) {
+        title.textContent = '✅ Betaling ontvangen';
+        message.textContent = 'De betaling is gelukt. De order wordt nu klaargezet voor levering.';
+        help.textContent = 'Deze pagina vernieuwt automatisch.';
+        return false;
+      }
+
+      if (orderStatus === 'pending_delivery' || orderStatus === 'processing') {
+        title.textContent = '📦 Levering wordt uitgevoerd';
+        message.textContent = 'De Minecraft-server verwerkt je aankoop.';
+        help.textContent = 'Dit duurt normaal maar enkele seconden.';
+        return false;
+      }
+
+      if (orderStatus === 'delivered') {
+        title.textContent = '✅ Aankoop geleverd';
+        message.textContent = 'Je betaling en levering zijn volledig afgerond.';
+        help.textContent = 'Je kunt nu terugkeren naar de server.';
+        return true;
+      }
+
+      if (orderStatus === 'failed') {
+        title.textContent = '❌ Levering mislukt';
+        message.textContent = 'De betaling is ontvangen, maar de automatische levering is mislukt.';
+        help.textContent = 'Maak een Discord-ticket en stuur je Stripe sessie-ID mee.';
+        return true;
+      }
+
+      return false;
+    }
+
+    async function checkStatus() {
+      if (!sessionId) {
+        title.textContent = '❌ Geen sessie gevonden';
+        message.textContent = 'De Stripe sessie-ID ontbreekt in de URL.';
+        help.textContent = 'Ga terug naar de shop of neem contact op met staff.';
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/order-status?session_id=${encodeURIComponent(sessionId)}`, {
+          cache: 'no-store'
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.details || data.error || 'Status kon niet worden opgehaald');
+        }
+
+        const finished = render(data);
+        if (!finished) setTimeout(checkStatus, 3000);
+      } catch (error) {
+        title.textContent = '⚠️ Status tijdelijk niet beschikbaar';
+        message.textContent = error.message;
+        help.textContent = 'We proberen het over enkele seconden opnieuw.';
+        setTimeout(checkStatus, 5000);
+      }
+    }
+
+    checkStatus();
+  </script>
 </body>
 </html>
