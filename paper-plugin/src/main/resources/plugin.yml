@@ -1,5 +1,5 @@
 name: DynathiStoreBridge
-version: 1.2.0
+version: 1.2.1
 main: nl.dynathi.store.DynathiStoreBridge
 api-version: '1.21'
 author: Jv420
@@ -13,10 +13,9 @@ commands:
     description: Open de DynathiSMP store beheer-GUI
     usage: /storegui
     permission: dynathistore.gui
-  shop:
+  webshop:
     description: Open de DynathiSMP spelerswebshop
-    usage: /shop
-    aliases: [webshop]
+    usage: /webshop
     permission: dynathistore.shop
 permissions:
   dynathistore.admin:
