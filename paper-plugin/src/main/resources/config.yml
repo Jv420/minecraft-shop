@@ -3,6 +3,15 @@ api-secret: "vervang-dit-met-dezelfde-lange-secret-als-in-vercel"
 check-interval-seconds: 10
 request-timeout-seconds: 15
 
+license:
+  enabled: false
+  server-url: "https://jouw-licentieserver.nl"
+  key: "XXXX-XXXX-XXXX-XXXX"
+  product: "DYNASTORE-PLUGIN"
+  instance-id: "jouw-unieke-server-id"
+  check-interval-minutes: 30
+  fail-open-minutes: 60
+
 logging:
   commands: true
   responses: true
