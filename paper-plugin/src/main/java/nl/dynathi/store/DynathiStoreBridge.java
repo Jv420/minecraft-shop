@@ -27,15 +27,18 @@ public final class DynathiStoreBridge extends JavaPlugin {
     private HttpClient httpClient;
     private BukkitTask pollingTask;
     private StoreGuiManager guiManager;
+    private PlayerShopGui playerShopGui;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         this.httpClient = buildHttpClient();
         this.guiManager = new StoreGuiManager(this);
+        this.playerShopGui = new PlayerShopGui(this);
         getServer().getPluginManager().registerEvents(guiManager, this);
+        getServer().getPluginManager().registerEvents(playerShopGui, this);
         startPolling();
-        getLogger().info("DynathiStoreBridge 1.1.0 is ingeschakeld.");
+        getLogger().info("DynathiStoreBridge 1.2.0 is ingeschakeld.");
     }
 
     @Override
@@ -180,6 +183,19 @@ public final class DynathiStoreBridge extends JavaPlugin {
                 return true;
             }
             guiManager.openMain(player);
+            return true;
+        }
+
+        if (command.getName().equalsIgnoreCase("shop") || command.getName().equalsIgnoreCase("webshop")) {
+            if (!(sender instanceof Player player)) {
+                sender.sendMessage("Dit commando kan alleen in-game gebruikt worden.");
+                return true;
+            }
+            if (!sender.hasPermission("dynathistore.shop")) {
+                sender.sendMessage(ChatColor.RED + "Geen toestemming.");
+                return true;
+            }
+            playerShopGui.open(player);
             return true;
         }
 
