@@ -12,6 +12,77 @@ Volledige Minecraft webshop voor DynathiSMP met Stripe, Discord, MySQL en automa
 6. De plugin meldt `delivered` of `failed` terug.
 7. Discord ontvangt meldingen over betaling en levering.
 
+## Tijdelijke testbundel van €0,50
+
+Er staat tijdelijk een testproduct in `lib/products.js`:
+
+```txt
+Test Mega Bundle — waarde €29,99
+```
+
+De testprijs is:
+
+```js
+price: 50
+```
+
+Omdat prijzen in eurocenten staan, betekent dit:
+
+```txt
+50 = €0,50
+2999 = €29,99
+```
+
+De testbundel levert:
+
+```txt
+10.000 coins
+100 shards
+1 Common crate key
+```
+
+Commands:
+
+```txt
+moneymanager add {player} 10000
+shardmanager add {player} 100
+keymanager give {player} common 1
+```
+
+Na een geslaagde live test heb je twee opties.
+
+### Optie A — Prijs terugzetten naar €29,99
+
+Open:
+
+```txt
+lib/products.js
+```
+
+Zoek:
+
+```js
+live_test_bundle
+```
+
+Verander:
+
+```js
+price: 50
+```
+
+naar:
+
+```js
+price: 2999
+```
+
+Pas daarna eventueel ook de naam en beschrijving aan zodat het geen testproduct meer heet.
+
+### Optie B — Testproduct verwijderen
+
+Verwijder het volledige `live_test_bundle` object uit `lib/products.js` en deploy opnieuw naar Vercel.
+
 ## Vereisten
 
 - Paper 1.21.11
@@ -564,6 +635,18 @@ https://jouw-project.vercel.app
 
 Controleer of producten zichtbaar zijn.
 
+De tijdelijke testbundel moet zichtbaar zijn als:
+
+```txt
+Test Mega Bundle — waarde €29,99
+```
+
+met een huidige prijs van:
+
+```txt
+€0,50
+```
+
 ## 2. Controleer de plugin
 
 ```txt
@@ -581,6 +664,8 @@ Gebruik een Stripe testkaart:
 ```
 
 Gebruik een toekomstige vervaldatum en willekeurige CVC.
+
+Voor een echte live controle kun je de tijdelijke testbundel voor €0,50 kopen.
 
 ## 4. Controleer de flow
 
@@ -633,8 +718,9 @@ Daarna:
 2. Maak een live Stripe webhook.
 3. Zet de live `whsec_...` in Vercel.
 4. Redeploy.
-5. Doe een kleine echte betaling.
+5. Doe een kleine echte betaling met de tijdelijke €0,50 bundel.
 6. Controleer Stripe, MySQL, Minecraft en Discord.
+7. Zet de testbundel daarna terug naar €29,99 of verwijder hem.
 
 # Deel 10 — Problemen oplossen
 
