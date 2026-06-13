@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Licentie aanvragen — DynathiStore</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main class="container" style="max-width:760px;padding-top:50px">
+    <section class="player-card" style="display:block">
+      <h1>Licentiecode aanvragen</h1>
+      <p>Vul je gegevens in. Je betaling wordt automatisch gecontroleerd voordat de aanvraag wordt opgeslagen.</p>
+
+      <label>Stripe sessie-ID</label>
+      <input id="sessionId" readonly />
+
+      <label>Naam</label>
+      <input id="customerName" placeholder="Jouw naam" />
+
+      <label>E-mailadres</label>
+      <input id="email" type="email" placeholder="naam@example.com" />
+
+      <label>Discord gebruikers-ID</label>
+      <input id="discordUserId" placeholder="Bijvoorbeeld 123456789012345678" />
+
+      <label>Product</label>
+      <select id="product">
+        <option value="DYNASTORE-WEB">DynathiStore Webshop</option>
+        <option value="DYNASTORE-PLUGIN">DynathiStoreBridge Plugin</option>
+        <option value="DYNASTORE-BUNDLE">Webshop + Plugin Bundle</option>
+      </select>
+
+      <label>Domein of server-ID</label>
+      <input id="instanceId" placeholder="shop.example.com of server-123" />
+
+      <button id="submitBtn" style="margin-top:18px">Aanvraag verzenden</button>
+      <p id="result"></p>
+    </section>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    document.getElementById('sessionId').value = params.get('session_id') || '';
+
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+      const payload = {
+        sessionId: document.getElementById('sessionId').value.trim(),
+        customerName: document.getElementById('customerName').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        discordUserId: document.getElementById('discordUserId').value.trim(),
+        product: document.getElementById('product').value,
+        instanceId: document.getElementById('instanceId').value.trim()
+      };
+
+      const result = document.getElementById('result');
+      result.textContent = 'Aanvraag wordt gecontroleerd...';
+
+      try {
+        const response = await fetch('/api/license-request', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Aanvraag mislukt');
+        result.textContent = `Aanvraag ontvangen. Aanvraagnummer: ${data.requestId}. Status: ${data.status}.`;
+      } catch (error) {
+        result.textContent = error.message;
+      }
+    });
+  </script>
+</body>
+</html>
