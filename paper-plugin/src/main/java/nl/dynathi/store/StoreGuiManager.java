@@ -24,11 +24,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 public final class StoreGuiManager implements Listener {
     private static final String MAIN_TITLE = ChatColor.DARK_AQUA + "Dynathi Store Beheer";
     private static final String ORDERS_TITLE = ChatColor.DARK_GREEN + "Recente Bestellingen";
     private static final String PLAYERS_TITLE = ChatColor.GOLD + "Kies een speler";
+    private static final String GIVEAWAY_PLAYERS_TITLE = ChatColor.DARK_PURPLE + "Giveaway winnaar";
     private static final String GIFTS_TITLE = ChatColor.LIGHT_PURPLE + "Kies een cadeau";
 
     private final DynathiStoreBridge plugin;
@@ -36,6 +38,7 @@ public final class StoreGuiManager implements Listener {
     private final HttpClient httpClient;
     private final Map<UUID, Map<Integer, JsonObject>> orderSlots = new HashMap<>();
     private final Map<UUID, Map<Integer, String>> playerSlots = new HashMap<>();
+    private final Map<UUID, Map<Integer, String>> giveawayPlayerSlots = new HashMap<>();
     private final Map<UUID, String> giftTargets = new HashMap<>();
     private final Map<UUID, Map<Integer, String>> giftProductSlots = new HashMap<>();
 
@@ -48,10 +51,12 @@ public final class StoreGuiManager implements Listener {
 
     public void openMain(Player player) {
         Inventory inventory = Bukkit.createInventory(null, 27, MAIN_TITLE);
-        inventory.setItem(11, item(Material.CHEST, ChatColor.GREEN + "Bestellingen bekijken",
+        inventory.setItem(10, item(Material.CHEST, ChatColor.GREEN + "Bestellingen bekijken",
                 ChatColor.GRAY + "Bekijk recente orders en retry mislukte orders."));
-        inventory.setItem(15, item(Material.BUNDLE, ChatColor.LIGHT_PURPLE + "Cadeau geven",
-                ChatColor.GRAY + "Geef coins, shards, bundels of ranks cadeau."));
+        inventory.setItem(13, item(Material.BUNDLE, ChatColor.LIGHT_PURPLE + "Cadeau geven",
+                ChatColor.GRAY + "Kies zelf een product voor een online speler."));
+        inventory.setItem(16, item(Material.FIREWORK_ROCKET, ChatColor.GOLD + "Random giveaway",
+                ChatColor.GRAY + "Kies een online winnaar en geef een willekeurig actief product."));
         inventory.setItem(22, item(Material.REDSTONE_TORCH, ChatColor.YELLOW + "Orders nu controleren",
                 ChatColor.GRAY + "Start direct een handmatige ordercheck."));
         player.openInventory(inventory);
@@ -145,6 +150,25 @@ public final class StoreGuiManager implements Listener {
         player.openInventory(inventory);
     }
 
+    public void openGiveawayPlayers(Player player) {
+        Inventory inventory = Bukkit.createInventory(null, 54, GIVEAWAY_PLAYERS_TITLE);
+        Map<Integer, String> slots = new HashMap<>();
+        int slot = 0;
+
+        for (Player target : Bukkit.getOnlinePlayers()) {
+            if (slot >= 45) break;
+            inventory.setItem(slot, item(Material.PLAYER_HEAD,
+                    ChatColor.LIGHT_PURPLE + target.getName(),
+                    ChatColor.GRAY + "Klik om deze speler als winnaar te kiezen."));
+            slots.put(slot, target.getName());
+            slot++;
+        }
+
+        inventory.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Terug"));
+        giveawayPlayerSlots.put(player.getUniqueId(), slots);
+        player.openInventory(inventory);
+    }
+
     public void openGiftProducts(Player player, String target) {
         giftTargets.put(player.getUniqueId(), target);
         Inventory inventory = Bukkit.createInventory(null, 54, GIFTS_TITLE);
@@ -171,15 +195,17 @@ public final class StoreGuiManager implements Listener {
         if (!(event.getWhoClicked() instanceof Player player)) return;
         String title = event.getView().getTitle();
         if (!title.equals(MAIN_TITLE) && !title.equals(ORDERS_TITLE)
-                && !title.equals(PLAYERS_TITLE) && !title.equals(GIFTS_TITLE)) return;
+                && !title.equals(PLAYERS_TITLE) && !title.equals(GIVEAWAY_PLAYERS_TITLE)
+                && !title.equals(GIFTS_TITLE)) return;
 
         event.setCancelled(true);
         int slot = event.getRawSlot();
         if (slot < 0) return;
 
         if (title.equals(MAIN_TITLE)) {
-            if (slot == 11) openOrders(player);
-            else if (slot == 15) openPlayers(player);
+            if (slot == 10) openOrders(player);
+            else if (slot == 13) openPlayers(player);
+            else if (slot == 16) openGiveawayPlayers(player);
             else if (slot == 22) {
                 plugin.manualPoll();
                 player.sendMessage(ChatColor.YELLOW + "Handmatige ordercheck gestart.");
@@ -213,6 +239,16 @@ public final class StoreGuiManager implements Listener {
             return;
         }
 
+        if (title.equals(GIVEAWAY_PLAYERS_TITLE)) {
+            if (slot == 49) {
+                openMain(player);
+                return;
+            }
+            String target = giveawayPlayerSlots.getOrDefault(player.getUniqueId(), Map.of()).get(slot);
+            if (target != null) randomGiveaway(player, target);
+            return;
+        }
+
         if (title.equals(GIFTS_TITLE)) {
             if (slot == 49) {
                 openPlayers(player);
@@ -237,6 +273,54 @@ public final class StoreGuiManager implements Listener {
             json.addProperty("player", target);
             json.addProperty("actor", actor.getName());
         }, "Cadeau voor " + target + " is aangemaakt.");
+    }
+
+    private void randomGiveaway(Player actor, String target) {
+        String apiUrl = trimSlash(plugin.getConfig().getString("api-url", ""));
+        HttpRequest productsRequest = HttpRequest.newBuilder()
+                .uri(URI.create(apiUrl + "/api/products"))
+                .timeout(Duration.ofSeconds(15))
+                .GET()
+                .build();
+
+        actor.closeInventory();
+        actor.sendMessage(ChatColor.YELLOW + "Willekeurig giveaway-product wordt gekozen...");
+
+        httpClient.sendAsync(productsRequest, HttpResponse.BodyHandlers.ofString())
+                .thenAccept(response -> {
+                    if (response.statusCode() != 200) {
+                        Bukkit.getScheduler().runTask(plugin, () ->
+                                actor.sendMessage(ChatColor.RED + "Producten ophalen mislukt: HTTP " + response.statusCode()));
+                        return;
+                    }
+
+                    try {
+                        JsonArray products = gson.fromJson(response.body(), JsonArray.class);
+                        if (products.isEmpty()) {
+                            Bukkit.getScheduler().runTask(plugin, () ->
+                                    actor.sendMessage(ChatColor.RED + "Er zijn geen actieve producten."));
+                            return;
+                        }
+
+                        JsonObject selected = products.get(ThreadLocalRandom.current().nextInt(products.size())).getAsJsonObject();
+                        String productId = selected.get("id").getAsString();
+                        String productName = selected.get("name").getAsString();
+
+                        post(actor, "/api/plugin/gift-order", json -> {
+                            json.addProperty("productId", productId);
+                            json.addProperty("player", target);
+                            json.addProperty("actor", actor.getName() + " (random giveaway)");
+                        }, "Giveaway: " + target + " wint " + productName + ".");
+                    } catch (Exception ex) {
+                        Bukkit.getScheduler().runTask(plugin, () ->
+                                actor.sendMessage(ChatColor.RED + "Giveaway kiezen mislukt: " + ex.getMessage()));
+                    }
+                })
+                .exceptionally(ex -> {
+                    Bukkit.getScheduler().runTask(plugin, () ->
+                            actor.sendMessage(ChatColor.RED + "Store API niet bereikbaar: " + ex.getMessage()));
+                    return null;
+                });
     }
 
     private void post(Player actor, String path, java.util.function.Consumer<JsonObject> bodyBuilder, String successMessage) {
