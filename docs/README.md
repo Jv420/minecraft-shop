@@ -2,7 +2,11 @@
 
 Deze map bevat de complete documentatie van de DynathiSMP-webshop.
 
-## Inhoud
+## Start hier
+
+- [Complete How-To met alle commands](COMPLETE-HOWTO.md)
+
+## Losse handleidingen
 
 - [Installatie en deployment](INSTALLATIE.md)
 - [Stripe configuratie](STRIPE.md)
