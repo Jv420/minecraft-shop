@@ -30,6 +30,14 @@ module.exports = async function handler(req, res) {
     console.log('Stripe webhook verified:', event.type, event.id);
   } catch (error) {
     console.error('Webhook signature failed:', error.message);
+    await sendDiscordEmbed({
+      title: '❌ Stripe webhook geweigerd',
+      description: 'Een Stripe webhook kon niet worden gevalideerd.',
+      color: 15548997,
+      fields: [
+        { name: 'Fout', value: String(error.message).slice(0, 1000), inline: false }
+      ]
+    });
     return res.status(400).send(`Webhook Error: ${error.message}`);
   }
 
@@ -48,7 +56,17 @@ module.exports = async function handler(req, res) {
       });
 
       if (session.payment_status !== 'paid') {
-        console.warn('Checkout completed but not paid:', session.id, session.payment_status);
+        await sendDiscordEmbed({
+          title: '⚠️ Checkout voltooid maar niet betaald',
+          description: 'Stripe meldde een voltooide checkout zonder betaalde status.',
+          color: 16753920,
+          fields: [
+            { name: 'Speler', value: String(player || 'onbekend'), inline: true },
+            { name: 'Product ID', value: String(productId || 'onbekend'), inline: true },
+            { name: 'Betaalstatus', value: String(session.payment_status || 'onbekend'), inline: true },
+            { name: 'Order', value: `\`${session.id}\``, inline: false }
+          ]
+        });
         return res.status(200).json({ received: true, queued: false, reason: 'not_paid' });
       }
 
@@ -86,7 +104,7 @@ module.exports = async function handler(req, res) {
       if (result.created) {
         await sendDiscordEmbed({
           title: '💰 Betaling gelukt',
-          description: 'De betaling is bevestigd en staat klaar voor levering door de Paper-plugin.',
+          description: 'De betaling is bevestigd en de order staat klaar voor levering.',
           color: 5763719,
           fields: [
             { name: 'Speler', value: player, inline: true },
@@ -94,6 +112,30 @@ module.exports = async function handler(req, res) {
             { name: 'Bedrag', value: money(product.price, product.currency), inline: true },
             { name: 'Order', value: `\`${session.id}\``, inline: false },
             { name: 'Status', value: 'pending_delivery', inline: true }
+          ]
+        });
+
+        await sendDiscordEmbed({
+          title: '📦 Order in leveringswachtrij',
+          description: 'De DynathiStoreBridge-plugin kan deze order ophalen.',
+          color: 3447003,
+          fields: [
+            { name: 'Speler', value: player, inline: true },
+            { name: 'Product', value: product.name, inline: true },
+            { name: 'Order', value: `\`${session.id}\``, inline: false },
+            { name: 'Aantal commands', value: String(commands.length), inline: true }
+          ]
+        });
+      } else {
+        await sendDiscordEmbed({
+          title: 'ℹ️ Stripe webhook opnieuw ontvangen',
+          description: 'Deze order bestond al en is daarom niet opnieuw toegevoegd.',
+          color: 9807270,
+          fields: [
+            { name: 'Speler', value: player, inline: true },
+            { name: 'Product', value: product.name, inline: true },
+            { name: 'Order', value: `\`${session.id}\``, inline: false },
+            { name: 'Reden', value: String(result.reason || 'already_exists'), inline: true }
           ]
         });
       }
@@ -118,6 +160,17 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ received: true });
   } catch (error) {
     console.error('Webhook handler error:', error);
+    await sendDiscordEmbed({
+      title: '❌ Betaling ontvangen maar verwerking mislukt',
+      description: 'De Stripe webhook werd gevalideerd, maar de order kon niet correct worden verwerkt of opgeslagen.',
+      color: 15548997,
+      fields: [
+        { name: 'Event', value: String(event?.type || 'onbekend'), inline: true },
+        { name: 'Event ID', value: `\`${String(event?.id || 'onbekend')}\``, inline: false },
+        { name: 'Foutcode', value: String(error.code || 'geen'), inline: true },
+        { name: 'Fout', value: String(error.message).slice(0, 1000), inline: false }
+      ]
+    });
     return res.status(500).json({
       error: 'Webhook handler failed',
       details: error.message,
