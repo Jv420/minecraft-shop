@@ -1,5 +1,5 @@
 name: DynathiStoreBridge
-version: 1.0.0
+version: 1.1.0
 main: nl.dynathi.store.DynathiStoreBridge
 api-version: '1.21'
 author: Jv420
@@ -9,7 +9,14 @@ commands:
     description: Beheer DynathiStoreBridge
     usage: /storebridge <status|reload|check>
     permission: dynathistore.admin
+  storegui:
+    description: Open de DynathiSMP store beheer-GUI
+    usage: /storegui
+    permission: dynathistore.gui
 permissions:
   dynathistore.admin:
     description: Beheer de DynathiStoreBridge plugin
+    default: op
+  dynathistore.gui:
+    description: Open de DynathiSMP store beheer-GUI
     default: op
