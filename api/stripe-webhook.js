@@ -27,6 +27,7 @@ module.exports = async function handler(req, res) {
       signature,
       process.env.STRIPE_WEBHOOK_SECRET
     );
+    console.log('Stripe webhook verified:', event.type, event.id);
   } catch (error) {
     console.error('Webhook signature failed:', error.message);
     return res.status(400).send(`Webhook Error: ${error.message}`);
@@ -39,6 +40,18 @@ module.exports = async function handler(req, res) {
       const player = session.metadata?.player;
       const product = products[productId];
 
+      console.log('Checkout completed:', {
+        sessionId: session.id,
+        paymentStatus: session.payment_status,
+        productId,
+        player
+      });
+
+      if (session.payment_status !== 'paid') {
+        console.warn('Checkout completed but not paid:', session.id, session.payment_status);
+        return res.status(200).json({ received: true, queued: false, reason: 'not_paid' });
+      }
+
       if (!product) {
         await sendDiscordEmbed({
           title: '⚠️ Betaald maar product onbekend',
@@ -50,7 +63,7 @@ module.exports = async function handler(req, res) {
             { name: 'Speler', value: String(player || 'onbekend'), inline: true }
           ]
         });
-        return res.status(200).json({ received: true });
+        return res.status(200).json({ received: true, queued: false, reason: 'unknown_product' });
       }
 
       const commands = product.commands.map(command =>
@@ -68,6 +81,8 @@ module.exports = async function handler(req, res) {
         commands
       });
 
+      console.log('Order queue result:', session.id, result);
+
       if (result.created) {
         await sendDiscordEmbed({
           title: '💰 Betaling gelukt',
@@ -82,6 +97,8 @@ module.exports = async function handler(req, res) {
           ]
         });
       }
+
+      return res.status(200).json({ received: true, queued: result.created, reason: result.reason || null });
     }
 
     if (event.type === 'checkout.session.expired') {
@@ -101,7 +118,11 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ received: true });
   } catch (error) {
     console.error('Webhook handler error:', error);
-    return res.status(500).json({ error: 'Webhook handler failed' });
+    return res.status(500).json({
+      error: 'Webhook handler failed',
+      details: error.message,
+      code: error.code || null
+    });
   }
 };
 
